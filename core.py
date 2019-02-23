@@ -453,6 +453,7 @@ class Navigator(object):
 		self.source = None
 		self.destination = None
 
+
 	
 	def setAgent(self, agent):
 		self.agent = agent
@@ -549,6 +550,7 @@ class PathNetworkNavigator(Navigator):
 		if self.pathnetwork is not None:
 			for l in self.pathnetwork:
 				pygame.draw.line(surface, (0, 0, 255), l[0], l[1], 1)
+		
 
 #####################
 ### NavMeshNavigator
@@ -791,6 +793,30 @@ class ManualObstacle(Obstacle):
 ############################
 ### GameWorld
 
+game_world = None
+def threaded_draw():
+	global game_world
+	self = game_world
+	while True:
+		# print "Draw"
+		offsetX = self.camera[0] - self.agent.rect.center[0]
+		offsetY = self.camera[1] - self.agent.rect.center[1]
+		self.screen.fill((255, 255, 255))
+		self.screen.blit(self.background, [offsetX, offsetY])
+		yield
+		if self.debugging:
+			self.background.blit(self.debug, (0, 0))
+		yield
+		self.sprites.draw(self.background)
+		yield
+		for o in self.obstacles:
+			o.draw(self.background)
+		yield
+		self.drawMousePosition()
+		yield
+		pygame.display.flip()
+		yield
+
 class GameWorld():
 
 	### screen: the screen
@@ -944,6 +970,7 @@ class GameWorld():
 #			self.movers.add(r)
 
 	def run(self):
+		global game_world
 		self.sprites = pygame.sprite.RenderPlain((self.agent))
 #		for r in self.resources:
 #			self.sprites.add(r)
@@ -957,19 +984,25 @@ class GameWorld():
 		for o in self.obstacles:
 			o.draw(self.background)
 
+		game_world = self
+		draw_iterator = threaded_draw()
+
 		while True:
 			clock.tick(TICK)
 			delta = clock.get_rawtime()
 			self.handleEvents()
 			self.update(delta)
 			self.sprites.update(delta) 
-			#print "obstacles"
-			#for o in self.obstacles:
-			#	print o.pos
-			#	o.pos[0] = o.pos[0] + 1.0
-			#	o.pos[1] = o.pos[1] + 1.0
-			self.drawWorld()
-			pygame.display.flip()
+
+			#self.drawWorld()
+			#pygame.display.flip()
+			try:
+				next(draw_iterator)
+				#pygame.display.flip()
+				# print "next"
+			except StopIteration:
+				# The drawing is finished, exit the main loop?
+				pass
 			
 	def drawWorld(self):
 		#self.screen.blit(self.background, (0, 0))
@@ -1013,12 +1046,24 @@ class GameWorld():
 		offsetY = pos[1] + self.agent.position[1] - self.camera[1]
 		return offsetX, offsetY
 		
-
+	'''
 	def doKeyDown(self, key):
 		if key == 32: #space
 			self.agent.shoot()
 		elif key == 100: #d
 			print "distance traveled", self.agent.distanceTraveled
+	'''
+	def doKeyDown(self, key):
+		pos = pygame.mouse.get_pos()
+		if key == 32: #space
+			self.agent.shoot()
+		elif key == 100: #d
+			print "distance traveled", self.agent.distanceTraveled
+		elif key == 101: #e
+			point = (pos[0] + self.agent.rect.center[0] - self.camera[0], pos[1] + self.agent.rect.center[1] - self.camera[1])
+			for npc in self.npcs:
+				npc.navigator.doDebug(self, point)
+				break
 
 	def worldCollisionTest(self):
 		collisions = []
@@ -1192,16 +1237,9 @@ class Gate(Thing, Blocker):
 		#self.active = active
 		dec = Decoration(sprite, (0, 0)) # throw away
 		size = max(dec.rect.height, dec.rect.width)
-		floatLength = distance(p1, p2)
-		length = int(floatLength)
-		dims = range(len(p1))
-		# Create evenly spaced decorations along the gate line.
-		offset = tuple(p2[i] - p1[i] for i in dims)
-		normOffset = tuple(offset[i] / floatLength for i in dims)
-		lineStart = tuple(p1[i] + normOffset[i] * size / 2.0 for i in dims)
-		numDecorations = length/size
-		for t in xrange(numDecorations):
-			pos = tuple((lineStart[i] + float(t) / numDecorations * offset[i]) - size / 2.0 for i in dims)
+		length = int(distance(p1, p2))
+		for t in xrange(length/size):
+			pos = (p1[0] + ((float(t)/length) * size * (p2[0] - p1[0])), p1[1] + ((float(t)/length) * size * (p2[1] - p1[1])))
 			d = Decoration(sprite, pos, 0)
 			self.decorations.append(d)
 			self.sprites.add(d)
