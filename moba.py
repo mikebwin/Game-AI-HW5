@@ -243,6 +243,7 @@ class Base(Mover):
 			agent.setOwner(self)
 			self.world.addNPC(agent)
 			agent.start()
+		print "team: ", self.team, " spawned #: ", self.numSpawned
 		return agent
 
 	def update(self, delta):
