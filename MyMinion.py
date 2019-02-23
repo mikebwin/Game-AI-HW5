@@ -53,7 +53,6 @@ class Idle(State):
 	def enter(self, oldstate):
 		State.enter(self, oldstate)
 		# stop moving
-		print "entering idle"
 		self.agent.stopMoving()
 	
 	def execute(self, delta = 0):
@@ -63,17 +62,26 @@ class Idle(State):
 		enemy_base = self.agent.world.getEnemyBases(self.agent.getTeam())[0]
 
 		# gotta go take down the enemy towers first
-		if len(enemy_towers) > 0:
+		if len(enemy_towers) == 2:
+			which_tower = random.randint(0, 1)
+			self.agent.changeState(MoveToTower, enemy_towers[which_tower])
+
+		# if enemy_towers[0].getHitpoints() == 0:
+		# 	self.agent.changeState(MoveToTower, enemy_towers[0], enemy_base)
+		#
+		# if enemy_towers[1].getHitpoints() == 0:
+		# 	self.agent.changeState(MoveToTower, enemy_towers[0], enemy_base)
+
+		elif len(enemy_towers) == 1:
 			if enemy_towers[0].getHitpoints() != 0:
-				print "moving to enemy tower 1"
+				# print "moving to enemy tower 1"
 				self.agent.changeState(MoveToTower, enemy_towers[0])
-			elif enemy_towers[0].getHitpoints() == 0 and enemy_towers[1].getHitpoints() != 0:
-				print "moving to enemy tower 2"
+			else:
+				# print "moving to enemy tower 2"
 				self.agent.changeState(MoveToTower, enemy_towers[1])
-		# towers will call "die" and remove itself from list whenever its hitpoints are depleted
-		# so whenever enemy_towers have zero length, we can go to enemy base
+
 		elif enemy_base:
-			print "moving to enemy base"
+			# print "moving to enemy base"
 			self.agent.changeState(MoveToBase, enemy_base)
 
 
@@ -109,17 +117,19 @@ class MoveToTower(State):
 		self.agent.navigateTo(self.targetTower.getLocation())
 
 	def execute(self, delta = 0):
+		if self.agent.isMoving() is not True:
+			self.agent.navigateTo(self.targetTower.getLocation())
+
 		if not self.targetTower.alive:
 			self.agent.changeState(Idle)
 
-		if distance(self.agent.getLocation(), self.targetTower.getLocation()) <= BIGBULLETRANGE:
-			print "shooting at tower"
+		if distance(self.agent.getLocation(), self.targetTower.getLocation()) <= SMALLBULLETRANGE:
+			# print "shooting at tower"
 			self.agent.stopMoving()
 			self.agent.turnToFace(self.targetTower.getLocation())
 			self.agent.shoot()
 
 	def exit(self):
-		print "exiting tower"
 		self.agent.stopMoving()
 
 
@@ -133,16 +143,18 @@ class MoveToBase(State):
 		self.agent.navigateTo(self.targetBase.getLocation())
 
 	def execute(self, delta = 0):
+		if self.agent.isMoving() is not True:
+			self.agent.navigateTo(self.targetBase.getLocation())
+
 		if not self.targetBase.alive:
 			self.agent.changeState(Idle)
 
 		if distance(self.agent.getLocation(), self.targetBase.getLocation()) <= BIGBULLETRANGE:
-			print "shooting at base"
+			# print "shooting at base"
 			self.agent.stopMoving()
 			self.agent.turnToFace(self.targetBase.getLocation())
 			self.agent.shoot()
 
 	def exit(self):
-		print "exiting base"
 		self.agent.stopMoving()
 
