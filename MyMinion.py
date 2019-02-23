@@ -59,7 +59,7 @@ class Idle(State):
 		State.execute(self, delta)
 		### YOUR CODE GOES BELOW HERE ###
 		enemy_towers = self.agent.world.getEnemyTowers(self.agent.getTeam())
-		enemy_base = self.agent.world.getEnemyBases(self.agent.getTeam())[0]
+		enemy_bases = self.agent.world.getEnemyBases(self.agent.getTeam())
 
 		# gotta go take down the enemy towers first
 		if len(enemy_towers) == 2:
@@ -80,8 +80,9 @@ class Idle(State):
 				# print "moving to enemy tower 2"
 				self.agent.changeState(MoveToTower, enemy_towers[1])
 
-		elif enemy_base:
+		elif enemy_bases:
 			# print "moving to enemy base"
+			enemy_base = enemy_bases[0]
 			self.agent.changeState(MoveToBase, enemy_base)
 
 
@@ -129,6 +130,13 @@ class MoveToTower(State):
 			self.agent.turnToFace(self.targetTower.getLocation())
 			self.agent.shoot()
 
+		else:
+			for npc in self.agent.getVisibleType(Minion):
+				if npc in self.agent.world.getEnemyNPCs(self.agent.getTeam()) \
+						and distance(self.agent.getLocation(), npc.getLocation()) < SMALLBULLETRANGE:
+					self.agent.turnToFace(npc.getLocation())
+					self.agent.shoot()
+
 	def exit(self):
 		self.agent.stopMoving()
 
@@ -149,11 +157,18 @@ class MoveToBase(State):
 		if not self.targetBase.alive:
 			self.agent.changeState(Idle)
 
-		if distance(self.agent.getLocation(), self.targetBase.getLocation()) <= BIGBULLETRANGE:
+		if distance(self.agent.getLocation(), self.targetBase.getLocation()) <= SMALLBULLETRANGE:
 			# print "shooting at base"
 			self.agent.stopMoving()
 			self.agent.turnToFace(self.targetBase.getLocation())
 			self.agent.shoot()
+
+		else:
+			for npc in self.agent.getVisibleType(Minion):
+				if npc in self.agent.world.getEnemyNPCs(self.agent.getTeam()) \
+						and distance(self.agent.getLocation(), npc.getLocation()) < SMALLBULLETRANGE:
+					self.agent.turnToFace(npc.getLocation())
+					self.agent.shoot()
 
 	def exit(self):
 		self.agent.stopMoving()
